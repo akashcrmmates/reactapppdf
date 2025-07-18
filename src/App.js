@@ -18,47 +18,65 @@ function App() {
     cursor: "pointer",
   };
 
-  // Parse access token and instance URL from URL hash after login redirect
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const token = params.get("access_token");
-      const instance = params.get("instance_url");
+ // 🔑 Parse access token and instance URL from the hash after Salesforce login
+useEffect(() => {
+  const hash = window.location.hash;
+  if (hash.includes("access_token")) {
+    const params = new URLSearchParams(hash.substring(1));
+    const token = params.get("access_token");
+    const instance = params.get("instance_url");
 
-      if (token && instance) {
-        setAccessToken(token);
-        setInstanceUrl(instance);
-        // Clear the hash from URL so token isn't visible
-        window.history.replaceState(null, null, " ");
-      }
+    if (token && instance) {
+      setAccessToken(token);
+      setInstanceUrl(instance);
+
+      // Remove token from URL for security
+      window.history.replaceState(null, null, window.location.pathname);
     }
-  }, []);
+  }
+}, []);
 
-  // Fetch all Salesforce objects after login
-  useEffect(() => {
-    if (accessToken && instanceUrl) {
-      fetchSObjects(instanceUrl, accessToken).then((objs) => {
-        const filtered = objs.filter((obj) => obj.queryable);
-        setSObjects(filtered);
-      });
+// 📦 Fetch all available Salesforce sObjects (only those that are queryable)
+useEffect(() => {
+  if (!accessToken || !instanceUrl) return;
+
+  const fetchObjects = async () => {
+    try {
+      const objs = await fetchSObjects(instanceUrl, accessToken);
+      const queryableObjects = objs.filter((obj) => obj.queryable);
+      setSObjects(queryableObjects);
+    } catch (err) {
+      console.error("⚠️ Failed to fetch sObjects:", err);
     }
-  }, [accessToken, instanceUrl]);
+  };
 
-  // Fetch fields of selected object
-  useEffect(() => {
-    if (selectedObject && accessToken && instanceUrl) {
-      fetchObjectFields(instanceUrl, accessToken, selectedObject).then((fields) => {
-        setFields(fields);
-        const tags = {};
-        tags[selectedObject] = fields.map((f) => ({
+  fetchObjects();
+}, [accessToken, instanceUrl]);
+
+// 🧩 Fetch fields of the selected Salesforce object and build merge tags
+useEffect(() => {
+  if (!selectedObject || !accessToken || !instanceUrl) return;
+
+  const fetchFieldsAndTags = async () => {
+    try {
+      const fields = await fetchObjectFields(instanceUrl, accessToken, selectedObject);
+      setFields(fields);
+
+      const tagMap = {
+        [selectedObject]: fields.map((f) => ({
           name: f.label,
           value: `{{${selectedObject}.${f.name}}}`,
-        }));
-        setMergeTags(tags);
-      });
+        })),
+      };
+
+      setMergeTags(tagMap);
+    } catch (err) {
+      console.error(`⚠️ Failed to fetch fields for ${selectedObject}:`, err);
     }
-  }, [selectedObject, accessToken, instanceUrl]);
+  };
+
+  fetchFieldsAndTags();
+}, [selectedObject, accessToken, instanceUrl]);
 
   const saveTemplate = async ({ design, html }) => {
     const css = extractCssFromHtml(html);
