@@ -105,7 +105,7 @@ function App() {
   // Salesforce OAuth2 Login redirect
   const handleLogin = () => {
     const clientId = "3MVG9k02hQhyUgQCN3n1EOBslis5_iJ9ApgelM2svuJz0nuQJcxp3UjQAwu_u.0IqtIbj5REa61PQM7CxyxBL";
-    const redirectUri = "https://687a40f6a90e3722cff06696--reactpdfakash.netlify.app/"; // <-- Update this to your actual Netlify URL after deploy!
+    const redirectUri = "https://687a40f6a90e3722cff06696--reactpdfakash.netlify.app"; // <-- Update this to your actual Netlify URL after deploy!
     const loginUrl = `https://login.salesforce.com/services/oauth2/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}`;
