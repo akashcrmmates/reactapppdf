@@ -5,7 +5,7 @@ function App() {
   const [accessToken, setAccessToken] = useState(null);
   const [instanceUrl, setInstanceUrl] = useState(null);
   const [sObjects, setSObjects] = useState([]);
-  const [selectedObject, setSelectedObject] = useState(null);
+  const [selectedObject, setSelectedObject] = useState("");
   const [fields, setFields] = useState([]);
   const [mergeTags, setMergeTags] = useState({});
 
@@ -18,6 +18,7 @@ function App() {
     cursor: "pointer",
   };
 
+  // Parse access token and instance URL from URL hash after login redirect
   useEffect(() => {
     const hash = window.location.hash;
     if (hash) {
@@ -28,19 +29,23 @@ function App() {
       if (token && instance) {
         setAccessToken(token);
         setInstanceUrl(instance);
+        // Clear the hash from URL so token isn't visible
+        window.history.replaceState(null, null, " ");
       }
     }
   }, []);
 
+  // Fetch all Salesforce objects after login
   useEffect(() => {
     if (accessToken && instanceUrl) {
       fetchSObjects(instanceUrl, accessToken).then((objs) => {
-        const filtered = objs.filter((obj) => obj.queryable === true);
+        const filtered = objs.filter((obj) => obj.queryable);
         setSObjects(filtered);
       });
     }
   }, [accessToken, instanceUrl]);
 
+  // Fetch fields of selected object
   useEffect(() => {
     if (selectedObject && accessToken && instanceUrl) {
       fetchObjectFields(instanceUrl, accessToken, selectedObject).then((fields) => {
@@ -48,7 +53,7 @@ function App() {
         const tags = {};
         tags[selectedObject] = fields.map((f) => ({
           name: f.label,
-          value: `{{${selectedObject}.${f.name}}}`
+          value: `{{${selectedObject}.${f.name}}}`,
         }));
         setMergeTags(tags);
       });
@@ -66,16 +71,16 @@ function App() {
 
     try {
       const response = await fetch(`${instanceUrl}/services/apexrest/TemplateManager`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          Authorization: 'Bearer ' + accessToken,
-          'Content-Type': 'application/json',
+          Authorization: "Bearer " + accessToken,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           name: templateName,
           html: html,
           css: css,
-          objectName: selectedObject
+          objectName: selectedObject,
         }),
       });
 
@@ -97,26 +102,19 @@ function App() {
     return match ? match[1] : "";
   };
 
-  /*************  ✨ Windsurf Command ⭐  *************/
-  /**
-   * Redirects the user to the Salesforce login page to initiate an OAuth2 login flow.
-   * 
-   * Constructs the authorization URL using the client ID and redirect URI,
-   * then sets the window's location to this URL, which prompts the user
-   * to log in to Salesforce and authorize the application.
-   */
-
-  /*******  316ab50f-15eb-444c-b257-c845f382140e  *******/
+  // Salesforce OAuth2 Login redirect
   const handleLogin = () => {
     const clientId = "3MVG9k02hQhyUgQCN3n1EOBslis5_iJ9ApgelM2svuJz0nuQJcxp3UjQAwu_u.0IqtIbj5REa61PQM7CxyxBL";
-    const redirectUri = " https://40d57778b8a1.ngrok-free.app";// "http://localhost:3001";
-    const loginUrl = `https://login.salesforce.com/services/oauth2/authorize?response_type=token&client_id=${clientId}&redirect_uri=${redirectUri}`;
+    const redirectUri = "https://687a40f6a90e3722cff06696--reactpdfakash.netlify.app/"; // <-- Update this to your actual Netlify URL after deploy!
+    const loginUrl = `https://login.salesforce.com/services/oauth2/authorize?response_type=token&client_id=${clientId}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}`;
     window.location.href = loginUrl;
   };
 
   async function fetchSObjects(instanceUrl, accessToken) {
     const res = await fetch(`${instanceUrl}/services/data/v58.0/sobjects`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     const data = await res.json();
     return data.sobjects;
@@ -124,14 +122,14 @@ function App() {
 
   async function fetchObjectFields(instanceUrl, accessToken, objectName) {
     const res = await fetch(`${instanceUrl}/services/data/v58.0/sobjects/${objectName}/describe`, {
-      headers: { Authorization: `Bearer ${accessToken}` }
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
     const data = await res.json();
     return data.fields;
   }
 
   return (
-    <div style={{ padding: "20px", fontFamily: "Arial, sans-serif" }}>
+    <div style={{ padding: 20, fontFamily: "Arial, sans-serif", maxWidth: 800, margin: "auto" }}>
       {!accessToken ? (
         <button onClick={handleLogin} style={btnStyle}>
           🔐 Login with Salesforce
@@ -140,11 +138,13 @@ function App() {
         <>
           <h2>Select Salesforce Object:</h2>
           <select
-            value={selectedObject || ""}
+            value={selectedObject}
             onChange={(e) => setSelectedObject(e.target.value)}
-            style={{ fontSize: "16px", padding: "5px", marginBottom: "20px" }}
+            style={{ fontSize: 16, padding: 5, marginBottom: 20, width: "100%" }}
           >
-            <option value="" disabled>-- Choose Object --</option>
+            <option value="" disabled>
+              -- Choose Object --
+            </option>
             {sObjects.map((obj) => (
               <option key={obj.name} value={obj.name}>
                 {obj.label} ({obj.name})
@@ -155,7 +155,15 @@ function App() {
           {selectedObject && (
             <>
               <h3>Fields of {selectedObject} (available as merge tags)</h3>
-              <ul style={{ maxHeight: "150px", overflowY: "scroll", border: "1px solid #ddd", padding: "10px" }}>
+              <ul
+                style={{
+                  maxHeight: 150,
+                  overflowY: "auto",
+                  border: "1px solid #ddd",
+                  padding: 10,
+                  listStyleType: "none",
+                }}
+              >
                 {fields.map((f) => (
                   <li key={f.name}>
                     {f.label} — <code>{`{{${selectedObject}.${f.name}}}`}</code>
@@ -175,15 +183,15 @@ function App() {
 
 export default App;
 
-// 🌍 GLOBAL FUNCTION — CALLED FROM SALESFORCE
-window.generatePdfFromSalesforce = async function (html, css, fileName = 'GeneratedPDF') {
+// GLOBAL FUNCTION — called from Salesforce to generate PDF
+window.generatePdfFromSalesforce = async function (html, css, fileName = "GeneratedPDF") {
   try {
     console.log("📥 Received HTML & CSS for PDF:", html, css);
 
     const response = await fetch(`${process.env.REACT_APP_PDF_API_URL}/generate-pdf`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ html, css }),
     });
@@ -195,7 +203,7 @@ window.generatePdfFromSalesforce = async function (html, css, fileName = 'Genera
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
+    const link = document.createElement("a");
     link.href = url;
     link.download = `${fileName}.pdf`;
     document.body.appendChild(link);
@@ -206,5 +214,3 @@ window.generatePdfFromSalesforce = async function (html, css, fileName = 'Genera
     console.error("❌ Error during PDF generation:", error);
   }
 };
-
-
