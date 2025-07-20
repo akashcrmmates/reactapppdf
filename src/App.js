@@ -81,21 +81,11 @@ function App() {
 const saveTemplate = async ({ design, html }) => {
   const css = extractCssFromHtml(html);
 
-  // Prompt user inputs
+  // Prompt for additional row styling (e.g., background-color, font-size)
   const rowStyleInput = prompt("Enter custom row CSS (e.g., background-color: #f2f2f2; font-size: 14px):", "");
-  const pageSize = prompt("Enter page size (e.g., A4, Letter):", "A4");
-  const pageBorder = prompt("Enter page border/margin (in px):", "20");
 
-  // Build table + row + page styles
   const tableStyle = `
     <style>
-      @page {
-        size: ${pageSize};
-        margin: ${pageBorder}px;
-      }
-      body {
-        margin: ${pageBorder}px;
-      }
       table {
         border-collapse: collapse;
         width: 100%;
@@ -113,7 +103,7 @@ const saveTemplate = async ({ design, html }) => {
     </style>
   `;
 
-  // Inject styles into <head>
+  // Inject styles inside <head> tag of html if present
   let finalHtml = html;
   if (/<head.*?>/i.test(html)) {
     finalHtml = html.replace(/(<head.*?>)/i, `$1${tableStyle}`);
@@ -155,7 +145,6 @@ const saveTemplate = async ({ design, html }) => {
     alert("Exception occurred while saving template.");
   }
 };
-
 
 
 
