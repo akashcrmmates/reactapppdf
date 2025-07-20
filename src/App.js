@@ -18,68 +18,93 @@ function App() {
     cursor: "pointer",
   };
 
- // 🔑 Parse access token and instance URL from the hash after Salesforce login
-useEffect(() => {
-  const hash = window.location.hash;
-  if (hash.includes("access_token")) {
-    const params = new URLSearchParams(hash.substring(1));
-    const token = params.get("access_token");
-    const instance = params.get("instance_url");
+  // 🔑 Parse access token and instance URL from the hash after Salesforce login
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get("access_token");
+      const instance = params.get("instance_url");
 
-    if (token && instance) {
-      setAccessToken(token);
-      setInstanceUrl(instance);
+      if (token && instance) {
+        setAccessToken(token);
+        setInstanceUrl(instance);
 
-      // Remove token from URL for security
-      window.history.replaceState(null, null, window.location.pathname);
+        // Remove token from URL for security
+        window.history.replaceState(null, null, window.location.pathname);
+      }
     }
-  }
-}, []);
+  }, []);
 
-// 📦 Fetch all available Salesforce sObjects (only those that are queryable)
-useEffect(() => {
-  if (!accessToken || !instanceUrl) return;
+  // 📦 Fetch all available Salesforce sObjects (only those that are queryable)
+  useEffect(() => {
+    if (!accessToken || !instanceUrl) return;
 
-  const fetchObjects = async () => {
-    try {
-      const objs = await fetchSObjects(instanceUrl, accessToken);
-      const queryableObjects = objs.filter((obj) => obj.queryable);
-      setSObjects(queryableObjects);
-    } catch (err) {
-      console.error("⚠️ Failed to fetch sObjects:", err);
-    }
-  };
+    const fetchObjects = async () => {
+      try {
+        const objs = await fetchSObjects(instanceUrl, accessToken);
+        const queryableObjects = objs.filter((obj) => obj.queryable);
+        setSObjects(queryableObjects);
+      } catch (err) {
+        console.error("⚠️ Failed to fetch sObjects:", err);
+      }
+    };
 
-  fetchObjects();
-}, [accessToken, instanceUrl]);
+    fetchObjects();
+  }, [accessToken, instanceUrl]);
 
-// 🧩 Fetch fields of the selected Salesforce object and build merge tags
-useEffect(() => {
-  if (!selectedObject || !accessToken || !instanceUrl) return;
+  // 🧩 Fetch fields of the selected Salesforce object and build merge tags
+  useEffect(() => {
+    if (!selectedObject || !accessToken || !instanceUrl) return;
 
-  const fetchFieldsAndTags = async () => {
-    try {
-      const fields = await fetchObjectFields(instanceUrl, accessToken, selectedObject);
-      setFields(fields);
+    const fetchFieldsAndTags = async () => {
+      try {
+        const fields = await fetchObjectFields(instanceUrl, accessToken, selectedObject);
+        setFields(fields);
 
-      const tagMap = {
-        [selectedObject]: fields.map((f) => ({
-          name: f.label,
-          value: `{{${selectedObject}.${f.name}}}`,
-        })),
-      };
+        const tagMap = {
+          [selectedObject]: fields.map((f) => ({
+            name: f.label,
+            value: `{{${selectedObject}.${f.name}}}`,
+          })),
+        };
 
-      setMergeTags(tagMap);
-    } catch (err) {
-      console.error(`⚠️ Failed to fetch fields for ${selectedObject}:`, err);
-    }
-  };
+        setMergeTags(tagMap);
+      } catch (err) {
+        console.error(`⚠️ Failed to fetch fields for ${selectedObject}:`, err);
+      }
+    };
 
-  fetchFieldsAndTags();
-}, [selectedObject, accessToken, instanceUrl]);
+    fetchFieldsAndTags();
+  }, [selectedObject, accessToken, instanceUrl]);
 
   const saveTemplate = async ({ design, html }) => {
     const css = extractCssFromHtml(html);
+
+    const tableBorderCSS = `
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      table, th, td {
+        border: 1px solid #333;
+      }
+      th, td {
+        padding: 8px;
+        text-align: left;
+      }
+    </style>
+  `;
+
+    // Inject table border CSS inside <head> tag of html if present
+    let finalHtml = html;
+    if (/<head.*?>/i.test(html)) {
+      finalHtml = html.replace(/(<head.*?>)/i, `$1${tableBorderCSS}`);
+    } else {
+      // If no <head>, prepend style to html
+      finalHtml = tableBorderCSS + html;
+    }
     const templateName = prompt("Enter a name for your template:", "My_Template");
 
     if (!templateName || !selectedObject) {
