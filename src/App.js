@@ -81,8 +81,21 @@ function App() {
 const saveTemplate = async ({ design, html }) => {
   const css = extractCssFromHtml(html);
 
-  const tableBorderCSS = `
+  // Prompt user inputs
+  const rowStyleInput = prompt("Enter custom row CSS (e.g., background-color: #f2f2f2; font-size: 14px):", "");
+  const pageSize = prompt("Enter page size (e.g., A4, Letter):", "A4");
+  const pageBorder = prompt("Enter page border/margin (in px):", "20");
+
+  // Build table + row + page styles
+  const tableStyle = `
     <style>
+      @page {
+        size: ${pageSize};
+        margin: ${pageBorder}px;
+      }
+      body {
+        margin: ${pageBorder}px;
+      }
       table {
         border-collapse: collapse;
         width: 100%;
@@ -94,16 +107,18 @@ const saveTemplate = async ({ design, html }) => {
         padding: 8px;
         text-align: left;
       }
+      tr {
+        ${rowStyleInput || ""}
+      }
     </style>
   `;
 
-  // Inject table border CSS inside <head> tag of html if present
+  // Inject styles into <head>
   let finalHtml = html;
   if (/<head.*?>/i.test(html)) {
-    finalHtml = html.replace(/(<head.*?>)/i, `$1${tableBorderCSS}`);
+    finalHtml = html.replace(/(<head.*?>)/i, `$1${tableStyle}`);
   } else {
-    // If no <head>, prepend style to html
-    finalHtml = tableBorderCSS + html;
+    finalHtml = tableStyle + html;
   }
 
   const templateName = prompt("Enter a name for your template:", "My_Template");
@@ -122,7 +137,7 @@ const saveTemplate = async ({ design, html }) => {
       },
       body: JSON.stringify({
         name: templateName,
-        html: finalHtml,       // <-- Use finalHtml here!
+        html: finalHtml,
         css: css,
         objectName: selectedObject,
       }),
@@ -140,6 +155,8 @@ const saveTemplate = async ({ design, html }) => {
     alert("Exception occurred while saving template.");
   }
 };
+
+
 
 
   const extractCssFromHtml = (html) => {
