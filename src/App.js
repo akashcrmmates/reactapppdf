@@ -78,10 +78,10 @@ function App() {
     fetchFieldsAndTags();
   }, [selectedObject, accessToken, instanceUrl]);
 
-  const saveTemplate = async ({ design, html }) => {
-    const css = extractCssFromHtml(html);
+const saveTemplate = async ({ design, html }) => {
+  const css = extractCssFromHtml(html);
 
-    const tableBorderCSS = `
+  const tableBorderCSS = `
     <style>
       table {
         border-collapse: collapse;
@@ -97,48 +97,50 @@ function App() {
     </style>
   `;
 
-    // Inject table border CSS inside <head> tag of html if present
-    let finalHtml = html;
-    if (/<head.*?>/i.test(html)) {
-      finalHtml = html.replace(/(<head.*?>)/i, `$1${tableBorderCSS}`);
+  // Inject table border CSS inside <head> tag of html if present
+  let finalHtml = html;
+  if (/<head.*?>/i.test(html)) {
+    finalHtml = html.replace(/(<head.*?>)/i, `$1${tableBorderCSS}`);
+  } else {
+    // If no <head>, prepend style to html
+    finalHtml = tableBorderCSS + html;
+  }
+
+  const templateName = prompt("Enter a name for your template:", "My_Template");
+
+  if (!templateName || !selectedObject) {
+    alert("Template name and object must be selected.");
+    return;
+  }
+
+  try {
+    const response = await fetch(`${instanceUrl}/services/apexrest/TemplateManager`, {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + accessToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        name: templateName,
+        html: finalHtml,       // <-- Use finalHtml here!
+        css: css,
+        objectName: selectedObject,
+      }),
+    });
+
+    if (response.ok) {
+      alert("✅ Template saved successfully to Salesforce.");
     } else {
-      // If no <head>, prepend style to html
-      finalHtml = tableBorderCSS + html;
+      const err = await response.text();
+      console.error("❌ Failed to save template:", err);
+      alert("Error saving template.");
     }
-    const templateName = prompt("Enter a name for your template:", "My_Template");
+  } catch (error) {
+    console.error("⚠️ Save error:", error);
+    alert("Exception occurred while saving template.");
+  }
+};
 
-    if (!templateName || !selectedObject) {
-      alert("Template name and object must be selected.");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${instanceUrl}/services/apexrest/TemplateManager`, {
-        method: "POST",
-        headers: {
-          Authorization: "Bearer " + accessToken,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: templateName,
-          html: html,
-          css: css,
-          objectName: selectedObject,
-        }),
-      });
-
-      if (response.ok) {
-        alert("✅ Template saved successfully to Salesforce.");
-      } else {
-        const err = await response.text();
-        console.error("❌ Failed to save template:", err);
-        alert("Error saving template.");
-      }
-    } catch (error) {
-      console.error("⚠️ Save error:", error);
-      alert("Exception occurred while saving template.");
-    }
-  };
 
   const extractCssFromHtml = (html) => {
     const match = html.match(/<style.*?>([\s\S]*?)<\/style>/i);
