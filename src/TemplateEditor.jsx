@@ -1,45 +1,186 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
-export default function TemplateEditor({ onExport, mergeTags = {} }) {
+export default function TemplateEditor({ onExport, mergeTags = {}, projectId = 1234 }) {
   const editorRef = useRef(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
+  const [pageSize, setPageSize] = useState("A4");
+  const [pageBorder, setPageBorder] = useState(20);
+  const [tableBorder, setTableBorder] = useState(1);
+  const [enableStriped, setEnableStriped] = useState(true);
+  const [enableHover, setEnableHover] = useState(true);
+  const [textAlign, setTextAlign] = useState("left");
 
   useEffect(() => {
-    // Wait until window.unlayer is loaded
     if (!window.unlayer) {
       console.error("Unlayer editor script not loaded!");
       return;
     }
 
-    // Init only once if not already initialized
-    if (editorRef.current && !editorRef.current._initialized) {
+    const initEditor = () => {
       window.unlayer.init({
         id: 'editor',
-        projectId: 1234,  // Optional: replace or remove if not used
+        projectId,
         displayMode: 'email',
         features: {
           stockImages: true,
         },
-        mergeTags: mergeTags,
+        mergeTags,
+        appearance: {
+          canvasWidth: 595,
+          canvasHeight: 842,
+          theme: 'light',
+        },
       });
+
+      const editorDiv = document.getElementById('editor');
+      if (editorDiv) {
+        editorDiv.style.border = `${tableBorder}px solid black`;
+        editorDiv.style.boxSizing = 'border-box';
+      }
+
+      setIsEditorReady(true);
       editorRef.current._initialized = true;
+    };
+
+    if (editorRef.current && !editorRef.current._initialized) {
+      initEditor();
     } else {
-      // If already initialized, update mergeTags dynamically
       window.unlayer.setMergeTags(mergeTags);
     }
-  }, [mergeTags]);
+  }, [mergeTags, projectId, tableBorder]);
 
-  const exportHtml = () => {
-    window.unlayer.exportHtml(({ design, html }) => {
-      onExport({ design, html });
-    });
+  const exportHtml = async () => {
+    try {
+      if (!isEditorReady) {
+        throw new Error("Editor not initialized");
+      }
+
+      window.unlayer.exportHtml(({ design, html }) => {
+        const tableStyles = `
+          <style>
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              border: ${tableBorder}px solid black;
+            }
+            td, th {
+              border: ${tableBorder}px solid black;
+              padding: 8px;
+              text-align: ${textAlign};
+            }
+            ${enableStriped ? `tr:nth-child(even) { background-color: #f9f9f9; }` : ''}
+            ${enableHover ? `tr:hover { background-color: #e0e0e0; }` : ''}
+          </style>
+        `;
+
+        const pageWidth = pageSize === 'A4' ? '210mm' : pageSize === 'Letter' ? '216mm' : '216mm';
+        const pageHeight = pageSize === 'A4' ? '297mm' : pageSize === 'Letter' ? '279mm' : '356mm';
+
+        const wrappedHtml = `
+          <div style="width: ${pageWidth}; min-height: ${pageHeight}; padding: ${pageBorder}px; border: 1px solid black; box-sizing: border-box;">
+            ${html}
+          </div>
+        `;
+
+        const finalHtml = wrappedHtml.replace('</head>', `${tableStyles}</head>`);
+
+        onExport({
+          design,
+          html: finalHtml,
+          settings: {
+            pageSize,
+            pageBorder,
+            tableBorder,
+            enableStriped,
+            enableHover,
+            textAlign
+          }
+        });
+      });
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert("Failed to export template");
+    }
   };
 
   return (
     <div>
-      <div id="editor" style={{ height: '600px', border: '1px solid #ddd' }} ref={editorRef}></div>
-      <button onClick={exportHtml} style={{ marginTop: '10px', padding: '10px 20px', backgroundColor: '#2d8cff', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-        Save Template
+      <div id="editor" style={{ height: '600px' }} ref={editorRef}></div>
+
+      <button
+        onClick={exportHtml}
+        disabled={!isEditorReady}
+        style={{
+          marginTop: '10px',
+          padding: '10px 20px',
+          backgroundColor: isEditorReady ? '#2d8cff' : '#cccccc',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: isEditorReady ? 'pointer' : 'not-allowed',
+        }}
+      >
+        {isEditorReady ? 'Save Template' : 'Loading Editor...'}
       </button>
+
+      <div style={{ marginBottom: '1rem', marginTop: '1rem' }}>
+        <label htmlFor="pageSize">Page Size: </label>
+        <select id="pageSize" value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
+          <option value="A4">A4</option>
+          <option value="Letter">Letter</option>
+          <option value="Legal">Legal</option>
+        </select>
+
+        <label htmlFor="pageBorder" style={{ marginLeft: '1rem' }}>Page Border (px): </label>
+        <input
+          id="pageBorder"
+          type="number"
+          value={pageBorder}
+          onChange={(e) => setPageBorder(Number(e.target.value))}
+          min="0"
+          max="100"
+        />
+
+        <label htmlFor="tableBorder" style={{ marginLeft: '1rem' }}>Table Border (px): </label>
+        <input
+          id="tableBorder"
+          type="number"
+          value={tableBorder}
+          onChange={(e) => {
+            const newBorder = Number(e.target.value);
+            setTableBorder(newBorder);
+            const editorDiv = document.getElementById('editor');
+            if (editorDiv) editorDiv.style.border = `${newBorder}px solid black`;
+          }}
+          min="0"
+          max="10"
+        />
+
+        <label style={{ marginLeft: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={enableStriped}
+            onChange={(e) => setEnableStriped(e.target.checked)}
+          />
+          Striped Rows
+        </label>
+
+        <label style={{ marginLeft: '1rem' }}>
+          <input
+            type="checkbox"
+            checked={enableHover}
+            onChange={(e) => setEnableHover(e.target.checked)}
+          />
+          Hover Highlight
+        </label>
+
+        <label htmlFor="textAlign" style={{ marginLeft: '1rem' }}>Cell Align: </label>
+        <select id="textAlign" value={textAlign} onChange={(e) => setTextAlign(e.target.value)}>
+          <option value="left">Left</option>
+          <option value="center">Center</option>
+          <option value="right">Right</option>
+        </select>
+      </div>
     </div>
   );
 }
