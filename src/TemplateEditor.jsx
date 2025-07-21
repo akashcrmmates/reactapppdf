@@ -107,80 +107,98 @@ export default function TemplateEditor({ onExport, mergeTags = {}, projectId = 1
     <div>
       <div id="editor" style={{ height: '600px' }} ref={editorRef}></div>
 
-      <button
-        onClick={exportHtml}
-        disabled={!isEditorReady}
-        style={{
-          marginTop: '10px',
-          padding: '10px 20px',
-          backgroundColor: isEditorReady ? '#2d8cff' : '#cccccc',
-          color: '#fff',
-          border: 'none',
-          borderRadius: '5px',
-          cursor: isEditorReady ? 'pointer' : 'not-allowed',
+      <div style={{ marginTop: '2rem', padding: '1rem', borderTop: '1px solid #ccc' }}>
+  {/* Page & Table Settings */}
+  <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+    <div>
+      <label htmlFor="pageSize">Page Size:</label><br />
+      <select id="pageSize" value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
+        <option value="A4">A4</option>
+        <option value="Letter">Letter</option>
+        <option value="Legal">Legal</option>
+      </select>
+    </div>
+
+    <div>
+      <label htmlFor="pageBorder">Page Border (px):</label><br />
+      <input
+        id="pageBorder"
+        type="number"
+        value={pageBorder}
+        onChange={(e) => setPageBorder(Number(e.target.value))}
+        min="0"
+        max="100"
+        style={{ width: '80px' }}
+      />
+    </div>
+
+    <div>
+      <label htmlFor="tableBorder">Table Border (px):</label><br />
+      <input
+        id="tableBorder"
+        type="number"
+        value={tableBorder}
+        onChange={(e) => {
+          const newBorder = Number(e.target.value);
+          setTableBorder(newBorder);
+          const editorDiv = document.getElementById('editor');
+          if (editorDiv) editorDiv.style.border = `${newBorder}px solid black`;
         }}
-      >
-        {isEditorReady ? 'Save Template' : 'Loading Editor...'}
-      </button>
+        min="0"
+        max="10"
+        style={{ width: '80px' }}
+      />
+    </div>
 
-      <div style={{ marginBottom: '1rem', marginTop: '1rem' }}>
-        <label htmlFor="pageSize">Page Size: </label>
-        <select id="pageSize" value={pageSize} onChange={(e) => setPageSize(e.target.value)}>
-          <option value="A4">A4</option>
-          <option value="Letter">Letter</option>
-          <option value="Legal">Legal</option>
-        </select>
+    <div>
+      <label htmlFor="textAlign">Cell Align:</label><br />
+      <select id="textAlign" value={textAlign} onChange={(e) => setTextAlign(e.target.value)}>
+        <option value="left">Left</option>
+        <option value="center">Center</option>
+        <option value="right">Right</option>
+      </select>
+    </div>
 
-        <label htmlFor="pageBorder" style={{ marginLeft: '1rem' }}>Page Border (px): </label>
-        <input
-          id="pageBorder"
-          type="number"
-          value={pageBorder}
-          onChange={(e) => setPageBorder(Number(e.target.value))}
-          min="0"
-          max="100"
-        />
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <input
+        type="checkbox"
+        checked={enableStriped}
+        onChange={(e) => setEnableStriped(e.target.checked)}
+        id="striped"
+      />
+      <label htmlFor="striped" style={{ marginLeft: '0.25rem' }}>Striped Rows</label>
+    </div>
 
-        <label htmlFor="tableBorder" style={{ marginLeft: '1rem' }}>Table Border (px): </label>
-        <input
-          id="tableBorder"
-          type="number"
-          value={tableBorder}
-          onChange={(e) => {
-            const newBorder = Number(e.target.value);
-            setTableBorder(newBorder);
-            const editorDiv = document.getElementById('editor');
-            if (editorDiv) editorDiv.style.border = `${newBorder}px solid black`;
-          }}
-          min="0"
-          max="10"
-        />
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <input
+        type="checkbox"
+        checked={enableHover}
+        onChange={(e) => setEnableHover(e.target.checked)}
+        id="hover"
+      />
+      <label htmlFor="hover" style={{ marginLeft: '0.25rem' }}>Hover Highlight</label>
+    </div>
+  </div>
 
-        <label style={{ marginLeft: '1rem' }}>
-          <input
-            type="checkbox"
-            checked={enableStriped}
-            onChange={(e) => setEnableStriped(e.target.checked)}
-          />
-          Striped Rows
-        </label>
+  {/* Save Template Button */}
+  <div>
+    <button
+      onClick={exportHtml}
+      disabled={!isEditorReady}
+      style={{
+        padding: '10px 20px',
+        backgroundColor: isEditorReady ? '#2d8cff' : '#cccccc',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '5px',
+        cursor: isEditorReady ? 'pointer' : 'not-allowed',
+      }}
+    >
+      {isEditorReady ? 'Save Template' : 'Loading Editor...'}
+    </button>
+  </div>
+</div>
 
-        <label style={{ marginLeft: '1rem' }}>
-          <input
-            type="checkbox"
-            checked={enableHover}
-            onChange={(e) => setEnableHover(e.target.checked)}
-          />
-          Hover Highlight
-        </label>
-
-        <label htmlFor="textAlign" style={{ marginLeft: '1rem' }}>Cell Align: </label>
-        <select id="textAlign" value={textAlign} onChange={(e) => setTextAlign(e.target.value)}>
-          <option value="left">Left</option>
-          <option value="center">Center</option>
-          <option value="right">Right</option>
-        </select>
-      </div>
     </div>
   );
 }
